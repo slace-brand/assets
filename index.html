@@ -32,17 +32,28 @@
     margin: 0 0 30px 0;
     letter-spacing: 0.3px;
   }
+  .cat-group {
+    margin-bottom: 18px;
+  }
+  .cat-heading {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #999;
+    font-weight: 600;
+    margin: 0 0 6px 4px;
+  }
   .category-list {
     list-style: none;
     padding: 0;
     margin: 0;
   }
   .category-list li {
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: #444;
   }
   .category-list li:hover {
@@ -115,16 +126,12 @@
 <div class="sidebar">
   <img class="logo" src="logo.png" alt="SLACE logo">
   <p class="brand-name">Brand Assets</p>
-  <ul class="category-list" id="categoryList">
-    <!-- generated automatically via JS -->
-  </ul>
+  <div id="sidebarContent"></div>
 </div>
 
 <div class="main">
   <h1 id="categoryTitle"></h1>
-  <div class="grid" id="assetGrid">
-    <!-- generated automatically via JS -->
-  </div>
+  <div class="grid" id="assetGrid"></div>
 </div>
 
 <script>
@@ -170,35 +177,54 @@
       </div>`;
   }
 
-  function renderGrid(assets, filter) {
+  function renderGrid(items, title) {
+    document.getElementById("categoryTitle").textContent = title;
     const grid = document.getElementById("assetGrid");
     grid.innerHTML = "";
-    const filtered = assets.filter(a => a.category === filter);
-    filtered.forEach(a => grid.innerHTML += renderCard(a));
+    items.forEach(a => grid.innerHTML += renderCard(a));
+  }
+
+  function selectEntry(el, items, title) {
+    document.querySelectorAll(".category-list li").forEach(li => li.classList.remove("active"));
+    el.classList.add("active");
+    renderGrid(items, title);
   }
 
   function buildSidebar(assets) {
+    const container = document.getElementById("sidebarContent");
     const categories = [...new Set(assets.map(a => a.category))];
-    const categoryList = document.getElementById("categoryList");
-    const title = document.getElementById("categoryTitle");
+    let firstEntry = null;
 
-    categories.forEach((cat, i) => {
-      const li = document.createElement("li");
-      li.textContent = cat;
-      if (i === 0) li.classList.add("active");
-      li.addEventListener("click", () => {
-        document.querySelectorAll(".category-list li").forEach(el => el.classList.remove("active"));
-        li.classList.add("active");
-        title.textContent = cat;
-        renderGrid(assets, cat);
+    categories.forEach(cat => {
+      const itemsInCat = assets.filter(a => a.category === cat);
+      const subcats = [...new Set(itemsInCat.map(a => a.subcategory || ""))];
+
+      const group = document.createElement("div");
+      group.className = "cat-group";
+
+      const heading = document.createElement("p");
+      heading.className = "cat-heading";
+      heading.textContent = cat;
+      group.appendChild(heading);
+
+      const list = document.createElement("ul");
+      list.className = "category-list";
+
+      subcats.forEach(sub => {
+        const items = itemsInCat.filter(a => (a.subcategory || "") === sub);
+        const label = sub ? sub : cat;
+        const li = document.createElement("li");
+        li.textContent = label;
+        li.addEventListener("click", () => selectEntry(li, items, label));
+        list.appendChild(li);
+        if (!firstEntry) firstEntry = { el: li, items, label };
       });
-      categoryList.appendChild(li);
+
+      group.appendChild(list);
+      container.appendChild(group);
     });
 
-    if (categories.length > 0) {
-      title.textContent = categories[0];
-      renderGrid(assets, categories[0]);
-    }
+    if (firstEntry) selectEntry(firstEntry.el, firstEntry.items, firstEntry.label);
   }
 
   // Load asset data from the published Google Sheet
