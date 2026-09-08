@@ -146,12 +146,32 @@
     return `https://drive.google.com/uc?export=download&id=${id}`;
   }
 
+  // Safer CSV parser — handles commas inside quoted fields
   function parseCSV(text) {
-    const rows = text.trim().split("\n").map(r => r.split(","));
-    const headers = rows[0].map(h => h.trim());
-    return rows.slice(1).map(row => {
+    const lines = text.trim().split("\n");
+    function parseLine(line) {
+      const result = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          inQuotes = !inQuotes;
+        } else if (ch === "," && !inQuotes) {
+          result.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      result.push(cur);
+      return result.map(v => v.trim());
+    }
+    const headers = parseLine(lines[0]);
+    return lines.slice(1).map(line => {
+      const values = parseLine(line);
       const obj = {};
-      headers.forEach((h, i) => obj[h] = (row[i] || "").trim());
+      headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
       return obj;
     });
   }
@@ -227,7 +247,6 @@
     if (firstEntry) selectEntry(firstEntry.el, firstEntry.items, firstEntry.label);
   }
 
-  // Load asset data from the published Google Sheet
   fetch(SHEET_CSV_URL)
     .then(res => res.text())
     .then(text => {
