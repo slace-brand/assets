@@ -121,7 +121,7 @@
 </div>
 
 <div class="main">
-  <h1 id="categoryTitle">All</h1>
+  <h1 id="categoryTitle"></h1>
   <div class="grid" id="assetGrid">
     <!-- generated automatically via JS -->
   </div>
@@ -173,12 +173,12 @@
   function renderGrid(assets, filter) {
     const grid = document.getElementById("assetGrid");
     grid.innerHTML = "";
-    const filtered = filter === "All" ? assets : assets.filter(a => a.category === filter);
+    const filtered = assets.filter(a => a.category === filter);
     filtered.forEach(a => grid.innerHTML += renderCard(a));
   }
 
   function buildSidebar(assets) {
-    const categories = ["All", ...new Set(assets.map(a => a.category))];
+    const categories = [...new Set(assets.map(a => a.category))];
     const categoryList = document.getElementById("categoryList");
     const title = document.getElementById("categoryTitle");
 
@@ -195,7 +195,10 @@
       categoryList.appendChild(li);
     });
 
-    renderGrid(assets, "All");
+    if (categories.length > 0) {
+      title.textContent = categories[0];
+      renderGrid(assets, categories[0]);
+    }
   }
 
   // Load asset data from the published Google Sheet
