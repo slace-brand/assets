@@ -119,6 +119,248 @@
     width: 100%;
     height: 140px;
   }
+
+  .section-label {
+    grid-column: 1/-1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #999;
+    margin: 20px 0 -4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-label:first-child {
+    margin-top: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <img class="logo" src="logo.png" alt="SLACE logo">
+  <p class="brand-name">Brand Assets</p>
+  <div id="sidebarContent"></div>
+</div>
+
+<div class="main">
+  <h1 id="categoryTitle"></h1>
+  <div class="grid" id="assetGrid"></div>
+</div>
+
+<script>
+  // Replace with your published Google Sheets CSV link
+  // (File → Share → Publish to web → format: CSV)
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTSoqf3ipT2bFA3IDxFYbfNUuzi-tg2M3lOr0z7mjVz4OZPo8DUdvjULLzPG5yJk_vMQBhHNPL4v_9S/pub?gid=0&single=true&output=csv";
+
+  function thumbUrl(id) {
+    return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+  }
+  function downloadUrl(id) {
+    return `https://drive.google.com/uc?export=download&id=${id}`;
+  }
+
+  // Safer CSV parser — handles commas inside quoted fields
+  function parseCSV(text) {
+    const lines = text.trim().split("\n");
+    function parseLine(line) {
+      const result = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          inQuotes = !inQuotes;
+        } else if (ch === "," && !inQuotes) {
+          result.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      result.push(cur);
+      return result.map(v => v.trim());
+    }
+    const headers = parseLine(lines[0]);
+    return lines.slice(1).map(line => {
+      const values = parseLine(line);
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
+      return obj;
+    });
+  }
+
+  function renderCard(a) {
+    if (a.type === "label") {
+      return `<p class="section-label">${a.name}</p>`;
+    }
+    if (a.type === "color") {
+      return `
+        <div class="card">
+          <div class="swatch" style="background:#${a.hex}"></div>
+          <div class="card-body">
+            <p>${a.name}</p>
+            <a onclick="navigator.clipboard.writeText('#${a.hex}'); alert('Copied #${a.hex}');">Copy HEX</a>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="card">
+        <img src="${thumbUrl(a.driveId)}" alt="${a.name}">
+        <div class="card-body">
+          <p>${a.name}</p>
+          <a href="${downloadUrl(a.driveId)}" target="_blank">Download</a>
+        </div>
+      </div>`;
+  }
+
+  function renderGrid(items, title) {
+    document.getElementById("categoryTitle").textContent = title;
+    const grid = document.getElementById("assetGrid");
+    grid.innerHTML = "";
+    items.forEach(a => grid.innerHTML += renderCard(a));
+  }
+
+  function selectEntry(el, items, title) {
+    document.querySelectorAll(".category-list li").forEach(li => li.classList.remove("active"));
+    el.classList.add("active");
+    renderGrid(items, title);
+  }
+
+  function buildSidebar(assets) {
+    const container = document.getElementById("sidebarContent");
+    const categories = [...new Set(assets.map(a => a.category))];
+    let firstEntry = null;
+
+    categories.forEach(cat => {
+      const itemsInCat = assets.filter(a => a.category === cat);
+      const subcats = [...new Set(itemsInCat.map(a => a.subcategory || ""))];
+
+      const group = document.createElement("div");
+      group.className = "cat-group";
+
+      const heading = document.createElement("p");
+      heading.className = "cat-heading";
+      heading.textContent = cat;
+      group.appendChild(heading);
+
+      const list = document.createElement("ul");
+      list.className = "category-list";
+
+      subcats.forEach(sub => {
+        const items = itemsInCat.filter(a => (a.subcategory || "") === sub);
+        const label = sub ? sub : cat;
+        const li = document.createElement("li");
+        li.textContent = label;
+        li.addEventListener("click", () => selectEntry(li, items, label));
+        list.appendChild(li);
+        if (!firstEntry) firstEntry = { el: li, items, label };
+      });
+
+      group.appendChild(list);
+      container.appendChild(group);
+    });
+
+    if (firstEntry) selectEntry(firstEntry.el, firstEntry.items, firstEntry.label);
+  }
+
+  fetch(SHEET_CSV_URL)
+    .then(res => res.text())
+    .then(text => {
+      const assets = parseCSV(text);
+      buildSidebar(assets);
+    })
+    .catch(err => {
+      document.getElementById("assetGrid").innerHTML = "<p>Could not load assets. Check the sheet link.</p>";
+      console.error(err);
+    });
+</script>
+
+</body>
+</html>  }
+  .cat-heading {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #999;
+    font-weight: 600;
+    margin: 0 0 6px 4px;
+  }
+  .category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .category-list li {
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 2px;
+    color: #444;
+  }
+  .category-list li:hover {
+    background: #f5f5f5;
+  }
+  .category-list li.active {
+    background: #eee;
+    color: #222;
+    font-weight: 600;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    flex: 1;
+    padding: 30px 40px;
+  }
+  .main h1 {
+    font-size: 22px;
+    margin-bottom: 25px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    border: 1px solid #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card img {
+    width: 100%;
+    height: 140px;
+    object-fit: contain;
+    background: #fafafa;
+    padding: 10px;
+  }
+  .card-body {
+    padding: 12px;
+  }
+  .card-body p {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .card-body a {
+    display: inline-block;
+    background: #26BBDE;
+    color: #fff;
+    text-decoration: none;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .card-body a:hover {
+    background: #1c9bb8;
+  }
+
+  .swatch {
+    width: 100%;
+    height: 140px;
+  }
 </style>
 </head>
 <body>
