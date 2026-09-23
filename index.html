@@ -190,7 +190,8 @@ function renderCard(a) {
   if (a.type === "color") {
     return '<div class="card"><div class="swatch" style="background:#' + a.hex + '"></div><div class="card-body"><p>' + a.name + '</p><a onclick="navigator.clipboard.writeText(\'#' + a.hex + '\'); alert(\'Copied #' + a.hex + '\');">Copy HEX</a></div></div>';
   }
-  var isWhite = a.name.toLowerCase().indexOf("white") !== -1;
+  var n = a.name.toLowerCase();
+  var isWhite = n.indexOf("white") !== -1 && n.indexOf("transparent") !== -1;
   var cardClass = isWhite ? "card on-dark" : "card";
   return '<div class="' + cardClass + '"><img src="' + thumbUrl(a.driveId) + '" alt="' + a.name + '"><div class="card-body"><p>' + a.name + '</p><a href="' + downloadUrl(a.driveId) + '" target="_blank">Download</a></div></div>';
 }
